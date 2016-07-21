@@ -1,3 +1,4 @@
+require('aframe-animation-component');
 require('aframe-audio-visualizer-components');
 require('aframe-entity-generator-component');
 require('aframe-event-set-component');

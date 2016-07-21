@@ -6,6 +6,7 @@ Kevin's collection of A-Frame add-ons, components, and helpers.
 
 Features:
 
+- [aframe-animation-component](https://github.com/ngokevin/aframe-animation-component)
 - [aframe-audio-visualizer-components](https://github.com/ngokevin/aframe-audio-visualizer-components)
 - [aframe-entity-generator-component](https://github.com/ngokevin/aframe-entity-generator-component)
 - [aframe-event-set-component](https://github.com/ngokevin/aframe-event-set-component)
