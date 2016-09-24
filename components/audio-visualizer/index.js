@@ -1,3 +1,5 @@
+var utils = require('./utils');
+
 if (typeof AFRAME === 'undefined') {
   throw new Error('Component attempted to register before AFRAME was available.');
 }
@@ -83,74 +85,82 @@ AFRAME.registerComponent('audio-visualizer', {
   }
 });
 
-/**
- * Component that triggers an event when frequency surprasses a threshold (e.g., a beat).
- *
- * @member {boolean} kicking - Whether component has just emitted a kick.
- */
 AFRAME.registerComponent('audio-visualizer-kick', {
-  dependencies: ['audio-visualizer'],
-
   schema: {
-    decay: {default: 0.02},
-    frequency: {default: [0, 10]},
-    threshold: {default: 0.3}
+    src: {type: 'selector'}
   },
 
   init: function () {
-    this.currentThreshold = this.data.threshold;
-    this.kicking = false;
+    var self = this;
+    this.audioEl = this.data.src;
+    this.peaks = null;
+    this.isPlaying = false;
+
+    // Create offline context.
+    var OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    var offlineContext = new OfflineContext(2, 30 * 44100, 44100);
+
+    var request = new XMLHttpRequest();
+    request.open('GET', this.audioEl.getAttribute('src'), true);
+    request.responseType = 'arraybuffer';
+    request.onload = function () {
+      offlineContext.decodeAudioData(request.response, function (buffer) {
+        // Create buffer source.
+        var source = offlineContext.createBufferSource();
+        source.buffer = buffer;
+
+        // Beats, or kicks, generally occur around the 100 to 150 hz range.
+        // Below this is often the bassline. Let's focus just on that.
+
+        // First a lowpass to remove most of the song.
+        var lowpass = offlineContext.createBiquadFilter();
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 150;
+        lowpass.Q.value = 1;
+
+        // Run the output of the source through the low pass.
+        source.connect(lowpass);
+
+        // Now a highpass to remove the bassline.
+        var highpass = offlineContext.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 100;
+        highpass.Q.value = 1;
+
+        // Run the output of the lowpass through the highpass.
+        lowpass.connect(highpass);
+
+        // Run the output of the highpass through our offline context.
+        highpass.connect(offlineContext.destination);
+
+        // Start the source and render the output into the offline conext.
+        source.start(0);
+        offlineContext.startRendering();
+      });
+    };
+    request.send();
+
+    offlineContext.oncomplete = function (e) {
+      var buffer = e.renderedBuffer;
+      self.peaks = utils.getPeaks([buffer.getChannelData(0), buffer.getChannelData(1)]);
+      self.peaks = self.peaks.map(function toPercent (peak) {
+        return peak.position / buffer.length;
+      });
+      console.log(self.peaks);
+      self.groups = utils.getIntervals(self.peaks);
+      self.isPlaying = true;
+      self.audioEl.play();
+      self.currentPeakIndex = 0;
+    };
   },
 
   tick: function () {
-    var data = this.data;
-    var el = this.el;
+    if (!this.peaks) { return; }
 
-    if (!el.components['audio-visualizer'].spectrum) { return; }
-
-    var magnitude = this.maxAmplitude(data.frequency);
-
-    if (magnitude > this.currentThreshold && magnitude > data.threshold) {
-      // Already kicking.
-      if (this.kicking) { return; }
-
-      // Was under the threshold, but now kicking.
-      this.kicking = true;
-      el.emit('audio-visualizer-kick-start', {
-        currentThreshold: this.currentThreshold,
-        magnitude: magnitude
-      });
-    } else {
-      // Update threshold.
-      this.currentThreshold -= data.decay;
-
-      // Was kicking, but now under the threshold
-      if (this.kicking) {
-        this.kicking = false;
-        el.emit('audio-visualizer-kick-end', {
-          currentThreshold: this.currentThreshold,
-          magnitude: magnitude
-        });
-      }
+    if (this.audioEl.currentTime / this.audioEl.duration >=
+        this.peaks[this.currentPeakIndex]) {
+      this.el.emit('audio-visualizer-kick');
+      this.currentPeakIndex = this.currentPeakIndex + 1;
     }
-  },
-
-  /**
-   * Adapted from dancer.js.
-   */
-  maxAmplitude: function (frequency) {
-    var max = 0;
-    var spectrum = this.el.components['audio-visualizer'].spectrum;
-
-    if (!frequency.length) {
-      return frequency < spectrum.length ? spectrum[~~frequency] : null;
-    }
-
-    for (var i = frequency[0], l = frequency[1]; i <= l; i++) {
-      if (spectrum[i] > max) {
-        max = spectrum[i];
-      }
-    }
-    return max;
   }
 });

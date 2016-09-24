@@ -2,6 +2,7 @@
   <head>
     <title>Kicks</title>
     <meta name="description" content="Visualizing kicks, spikes in frequency defined by threshold"></meta>
+    <script src="https://aframe.io/releases/0.3.1/aframe.min.js"></script>
     <script src="../build.js"></script>
     <script src="components/color-on-kick.js"></script>
   </head>
@@ -9,20 +10,13 @@
     <a-scene>
       <a-assets>
         <a-mixin id="box" geometry="primitive: box" material="color: #C03546"
-                 audio-visualizer="src: #machinecivilization"
-                 audio-visualizer-kick="threshold: 0.00012"
+                 audio-visualizer-kick="src: #machinecivilization"
                  color-on-kick></a-mixin>
-        <audio id="machinecivilization" src="machinecivilization.mp3" autoplay loop></audio>
+        <audio id="machinecivilization" src="machinecivilization.mp3"></audio>
       </a-assets>
 
       <a-entity id="container" position="0 0.5 -4">
-        <a-entity mixin="box" audio-visualizer-kick="threshold: 10"
-                  position="-2 0 0"></a-entity>
-        <a-entity mixin="box" audio-visualizer-kick="threshold: 100"
-                  position="-1 0 0"></a-entity>
-        <a-entity mixin="box" audio-visualizer-kick="threshold: 200"></a-entity>
-        <a-entity mixin="box" audio-visualizer-kick="threshold: 300"
-                  position="1 0 0"></a-entity>
+        <a-entity mixin="box" position="-2 0 0"></a-entity>
       </a-entity>
 
       <a-light type="ambient" color="#222"></a-light>
