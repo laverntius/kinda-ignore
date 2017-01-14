@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>A-Boxel</title>
+    <meta name="description" content="A-Boxel">
+    <script src="aframe.min.js"></script>
+  </head>
+  <body>
+    <script>
+      AFRAME.registerComponent('intersection-offset', {
+        schema: {type: 'number'}
+      });
+
+      AFRAME.registerComponent('intersection-spawner', {
+        schema: {type: 'string'},  // Mixin name.
+
+        init: function () {
+          this.el.addEventListener('click', evt => {
+            var offset;
+            var point;
+            var spawnEl;
+
+            // Create element.
+            spawnEl = document.createElement('a-entity');
+            spawnEl.setAttribute('class', 'intersectable');
+            spawnEl.setAttribute('mixin', this.data.mixin);
+
+            // Snap intersection point to grid and offset from center.
+            offset = spawnEl.getAttribute('intersection-offset') || 0;
+            point = evt.detail.intersection.point;
+            point.x = Math.floor(point.x) + offset;
+            point.y = Math.floor(point.y) + offset;
+            point.z = Math.floor(point.z) + offset;
+            spawnEl.setAttribute('position', point);
+
+            this.el.sceneEl.appendChild(spawnEl);
+          });
+        }
+      });
+    </script>
+
+    <a-scene>
+      <a-assets>
+        <img id="floor" src="img/floor.jpg">
+        <img id="skymap" src="img/sky.jpg">
+        <a-mixin id="box"
+          geometry="primitive: box; depth: 1; height: 1; width: 1"
+          material="color: #CCC"
+          intersection-offset="1"
+        ></a-mixin>
+      </a-assets>
+
+      <a-entity id="sky"
+        geometry="primitive: sphere; radius: 30; phiLength: 360; phiStart: 0; thetaLength: 90"
+        material="shader: flat; side: back; height: 2048; src: #skymap; width: 2048"
+      ></a-entity>
+
+      <a-entity id="ground" class="intersectable"
+        geometry="primitive: circle; radius: 35"
+        rotation="90 0 0"
+        material="src: #floor; side: double"
+      ></a-entity>
+
+      <!--Tracked controls. -->
+      <a-entity hand-controls="hand: left"></a-entity>
+      <a-entity hand-controls="hand: right"></a-entity>
+
+      <!-- Camera. -->
+      <a-camera>
+        <a-cursor
+          intersection-spawner="box"
+          raycaster="objects: .intersectable"
+        ></a-cursor>
+      </a-camera>
+    </a-scene>
+  </body>
+</html>
